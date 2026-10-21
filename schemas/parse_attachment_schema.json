@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MicrosoftFormsAttachmentSchema",
+  "description": "JSON schema for parsing Microsoft Forms attachment metadata / 用於解析 Microsoft Forms 附件元數據的 JSON 結構描述",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "description": "Original file name of the uploaded attachment / 上傳檔案之原始檔案名稱"
+      },
+      "link": {
+        "type": "string",
+        "description": "OneDrive file access link / OneDrive 檔案存取連結"
+      },
+      "id": {
+        "type": "string",
+        "description": "Unique file identifier / 檔案唯一識別碼"
+      },
+      "type": {
+        "type": "string",
+        "description": "File type or extension / 檔案類型或副檔名"
+      },
+      "size": {
+        "type": "integer",
+        "description": "File size in bytes / 檔案大小 (bytes)"
+      }
+    },
+    "required": [
+      "name",
+      "link"
+    ]
+  }
+}
