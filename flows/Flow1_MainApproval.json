@@ -1,0 +1,311 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {},
+  "triggers": {
+    "When_a_new_response_is_submitted": {
+      "type": "OpenApiConnectionWebhook",
+      "inputs": {
+        "host": {
+          "connectionName": "shared_microsoftforms",
+          "operationId": "WebhookFormResponse",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_microsoftforms"
+        },
+        "parameters": {
+          "formId": "DEMO_FORM_ID_PLACEHOLDER"
+        }
+      }
+    }
+  },
+  "actions": {
+    "Get_response_details": {
+      "type": "OpenApiConnection",
+      "inputs": {
+        "host": {
+          "connectionName": "shared_microsoftforms",
+          "operationId": "GetFormResponseById",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_microsoftforms"
+        },
+        "parameters": {
+          "formId": "DEMO_FORM_ID_PLACEHOLDER",
+          "responseId": "@triggerOutputs()?['body/resourceData/responseId']"
+        }
+      },
+      "runAfter": {}
+    },
+    "Create_item": {
+      "type": "OpenApiConnection",
+      "inputs": {
+        "host": {
+          "connectionName": "shared_sharepointonline",
+          "operationId": "PostItem",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+        },
+        "parameters": {
+          "dataset": "https://demo-tenant.sharepoint.com/sites/hr",
+          "table": "Demo_Gift_Declarations",
+          "item/Title": "@concat('DEC-', utcNow('yyyyMMdd'), '-', triggerOutputs()?['body/resourceData/responseId'])",
+          "item/DeclarantName": "@outputs('Get_response_details')?['body/r_declarant_name']",
+          "item/DeclarantEmail": "@outputs('Get_response_details')?['body/responder']",
+          "item/Department": "@outputs('Get_response_details')?['body/r_department']",
+          "item/Status": {
+            "Value": "待HR初審"
+          },
+          "item/DeclarantAckStatus": {
+            "Value": "待申報人確認"
+          }
+        }
+      },
+      "runAfter": {
+        "Get_response_details": [
+          "Succeeded"
+        ]
+      }
+    },
+    "Parse_JSON": {
+      "type": "ParseJson",
+      "inputs": {
+        "content": "@outputs('Get_response_details')?['body/r_attachments']",
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "link": { "type": "string" },
+              "id": { "type": "string" }
+            },
+            "required": ["name", "link"]
+          }
+        }
+      },
+      "runAfter": {
+        "Create_item": [
+          "Succeeded"
+        ]
+      }
+    },
+    "Apply_to_each_attachment": {
+      "type": "Foreach",
+      "foreach": "@body('Parse_JSON')",
+      "actions": {
+        "Get_file_content_by_path": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_onedriveforbusiness",
+              "operationId": "GetFileContentByPath",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness"
+            },
+            "parameters": {
+              "path": "@concat('/Apps/Microsoft Forms/Demo_Gift_Declaration_Form/Question/', items('Apply_to_each_attachment')?['name'])"
+            }
+          }
+        },
+        "Add_attachment": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_sharepointonline",
+              "operationId": "AddAttachment",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+            },
+            "parameters": {
+              "dataset": "https://demo-tenant.sharepoint.com/sites/hr",
+              "table": "Demo_Gift_Declarations",
+              "id": "@outputs('Create_item')?['body/ID']",
+              "name": "@items('Apply_to_each_attachment')?['name']",
+              "fileContent": "@body('Get_file_content_by_path')"
+            }
+          },
+          "runAfter": {
+            "Get_file_content_by_path": [
+              "Succeeded"
+            ]
+          }
+        }
+      },
+      "runAfter": {
+        "Parse_JSON": [
+          "Succeeded"
+        ]
+      }
+    },
+    "Start_and_wait_for_HR_Review": {
+      "type": "OpenApiConnectionWebhook",
+      "inputs": {
+        "host": {
+          "connectionName": "shared_approvals",
+          "operationId": "StartAndWaitForAnApproval",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_approvals"
+        },
+        "parameters": {
+          "approvalType": "ApproveReject",
+          "title": "@concat('[Part B Review | 乙部初審] ', outputs('Get_response_details')?['body/r_declarant_name'], ' - ', outputs('Get_response_details')?['body/r_department'])",
+          "assignedTo": "hr@demo-enterprise.local",
+          "itemLink": "@outputs('Create_item')?['body/{Link}']"
+        }
+      },
+      "runAfter": {
+        "Apply_to_each_attachment": [
+          "Succeeded"
+        ]
+      }
+    },
+    "Condition_Check_HR_Result": {
+      "type": "If",
+      "expression": {
+        "equals": [
+          "@outputs('Start_and_wait_for_HR_Review')?['body/outcome']",
+          "Approve"
+        ]
+      },
+      "actions": {
+        "Update_item_Pending_MD_Approval": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_sharepointonline",
+              "operationId": "PatchItem",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+            },
+            "parameters": {
+              "dataset": "https://demo-tenant.sharepoint.com/sites/hr",
+              "table": "Demo_Gift_Declarations",
+              "id": "@outputs('Create_item')?['body/ID']",
+              "item/HRReviewResult": "Approve",
+              "item/HRReviewComments": "@first(outputs('Start_and_wait_for_HR_Review')?['body/responses'])?['comments']",
+              "item/Status": {
+                "Value": "待管理層批核"
+              }
+            }
+          }
+        },
+        "Start_and_wait_for_MD_Directive": {
+          "type": "OpenApiConnectionWebhook",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_approvals",
+              "operationId": "StartAndWaitForAnApproval",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_approvals"
+            },
+            "parameters": {
+              "approvalType": "CustomResponse",
+              "responseOptions": [
+                "Keep by Declarant (由申報人保留)",
+                "Display in Office (作陳列之用)",
+                "Share with Staff (與職員分享)",
+                "Use for Lucky Draw (作抽獎之用)",
+                "Donate to Charity (送贈慈善機構)",
+                "Return to Offeror (退回提供者)",
+                "Others - See Comments (其他)"
+              ],
+              "title": "@concat('[Part C Directive | 丙部批示] ', outputs('Get_response_details')?['body/r_declarant_name'])",
+              "assignedTo": "manager@demo-enterprise.local",
+              "itemLink": "@outputs('Create_item')?['body/{Link}']"
+            }
+          },
+          "runAfter": {
+            "Update_item_Pending_MD_Approval": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Update_item_Pending_HR_Execution": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_sharepointonline",
+              "operationId": "PatchItem",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+            },
+            "parameters": {
+              "dataset": "https://demo-tenant.sharepoint.com/sites/hr",
+              "table": "Demo_Gift_Declarations",
+              "id": "@outputs('Create_item')?['body/ID']",
+              "item/MDDecision": "@outputs('Start_and_wait_for_MD_Directive')?['body/outcome']",
+              "item/MDComments": "@first(outputs('Start_and_wait_for_MD_Directive')?['body/responses'])?['comments']",
+              "item/Status": {
+                "Value": "待HR執行處置"
+              }
+            }
+          },
+          "runAfter": {
+            "Start_and_wait_for_MD_Directive": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Send_notification_email_to_HR_for_execution": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_office365",
+              "operationId": "SendEmailV2",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
+            },
+            "parameters": {
+              "emailMessage/To": "hr@demo-enterprise.local",
+              "emailMessage/Subject": "[Action Required | 請執行處置] Management has approved the declaration / 管理層已批示利益申報",
+              "emailMessage/Body": "<p>Management has completed the review. Please execute the directives and update the list status to Archived.<br><br>管理層已完成批核，請按指示執行並於清單更新記錄後改為已完成歸檔。</p>"
+            }
+          },
+          "runAfter": {
+            "Update_item_Pending_HR_Execution": [
+              "Succeeded"
+            ]
+          }
+        }
+      },
+      "runAfter": {
+        "Start_and_wait_for_HR_Review": [
+          "Succeeded"
+        ]
+      }
+    },
+    "else": {
+      "actions": {
+        "Update_item_HR_Rejected": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_sharepointonline",
+              "operationId": "PatchItem",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+            },
+            "parameters": {
+              "dataset": "https://demo-tenant.sharepoint.com/sites/hr",
+              "table": "Demo_Gift_Declarations",
+              "id": "@outputs('Create_item')?['body/ID']",
+              "item/HRReviewResult": "Reject",
+              "item/HRReviewComments": "@first(outputs('Start_and_wait_for_HR_Review')?['body/responses'])?['comments']",
+              "item/Status": {
+                "Value": "HR退回申報"
+              }
+            }
+          }
+        },
+        "Send_rejection_email_to_employee": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_office365",
+              "operationId": "SendEmailV2",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
+            },
+            "parameters": {
+              "emailMessage/To": "@outputs('Get_response_details')?['body/responder']",
+              "emailMessage/Subject": "[Action Required | 申報退回通知] Your declaration was rejected / 閣下提交之申報未能通過初審",
+              "emailMessage/Body": "<p>Your declaration did not pass the initial review. Please correct the information according to HR's comments.<br><br>申報未能通過初審，請依照 HR 備註補正資料。</p>"
+            }
+          },
+          "runAfter": {
+            "Update_item_HR_Rejected": [
+              "Succeeded"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
