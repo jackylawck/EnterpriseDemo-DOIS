@@ -1,0 +1,71 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {},
+  "triggers": {
+    "When_an_item_is_created_or_modified": {
+      "type": "OpenApiConnectionWebhook",
+      "inputs": {
+        "host": {
+          "connectionName": "shared_sharepointonline",
+          "operationId": "HttpRequestWebhook",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+        },
+        "parameters": {
+          "dataset": "https://demo-tenant.sharepoint.com/sites/hr",
+          "table": "Demo_Gift_Declarations"
+        }
+      },
+      "conditions": [
+        {
+          "expression": "@and(equals(triggerOutputs()?['body/Status/Value'], '已完成歸檔'), not(equals(triggerOutputs()?['body/DeclarantAckStatus/Value'], '申報人已確認')))"
+        }
+      ]
+    }
+  },
+  "actions": {
+    "Start_and_wait_for_Declarant_Closure_Ack": {
+      "type": "OpenApiConnectionWebhook",
+      "inputs": {
+        "host": {
+          "connectionName": "shared_approvals",
+          "operationId": "StartAndWaitForAnApproval",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_approvals"
+        },
+        "parameters": {
+          "approvalType": "CustomResponse",
+          "responseOptions": [
+            "Acknowledge (本人確認上述安排)"
+          ],
+          "title": "@concat('[Closure Ack | 處置確認] Final Disposal Arrangement Acknowledgement (Ref: ', triggerOutputs()?['body/Title'], ')')",
+          "assignedTo": "@triggerOutputs()?['body/DeclarantEmail']",
+          "itemLink": "@triggerOutputs()?['body/{Link}']"
+        }
+      }
+    },
+    "Update_item_Write_Ack_Record": {
+      "type": "OpenApiConnection",
+      "inputs": {
+        "host": {
+          "connectionName": "shared_sharepointonline",
+          "operationId": "PatchItem",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+        },
+        "parameters": {
+          "dataset": "https://demo-tenant.sharepoint.com/sites/hr",
+          "table": "Demo_Gift_Declarations",
+          "id": "@triggerOutputs()?['body/ID']",
+          "item/DeclarantAckStatus": {
+            "Value": "申報人已確認"
+          },
+          "item/DeclarantAckDate": "@convertTimeZone(utcNow(), 'UTC', 'China Standard Time')"
+        }
+      },
+      "runAfter": {
+        "Start_and_wait_for_Declarant_Closure_Ack": [
+          "Succeeded"
+        ]
+      }
+    }
+  }
+}
