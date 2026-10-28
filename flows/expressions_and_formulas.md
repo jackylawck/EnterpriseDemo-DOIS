@@ -1,12 +1,9 @@
-# EnterpriseDemo-DOIS 核心公式與運算式清單
-
+# EnterpriseDemo-DOIS 核心公式與運算式清單 
 # Core Formulas & Expressions Cheat Sheet
 
 ### 1. 主流程：自動生成案卷流水號 / Main Flow: Auto-generate Case Serial Number (Title)
-
 **[ZH]** 在「建立項目」的「標題 (Title)」欄位中使用。
 **[EN]** Used in the "Title" field of the "Create_item" action.
-
 ```text
 concat('DEC-', utcNow('yyyyMMdd'), '-', triggerOutputs()?['body/resourceData/responseId'])
 
@@ -50,10 +47,22 @@ float(outputs('Get_response_details')?['body/r8xxxx...'])
 
 ---
 
-### 4. 子流程：觸發條件防禦公式 / Sub-Flow: Trigger Condition Defense Formula
+### 4. 主流程：零信任權限隔離 REST API / Main Flow: Zero-Trust RLS REST API (Break Role Inheritance)
 
-**[ZH]** 在子流程「建立或修改項目時」的「設定 ➔ 觸發程序條件」中使用，徹底杜絕無窮迴圈。（已將十六進制亂碼更正為標準內部欄位名稱 `Status` 與 `DeclarantAckStatus`）
-**[EN]** Used in the "Settings ➔ Trigger Conditions" of the sub-flow's trigger to completely prevent infinite loops. (Hexadecimal gibberish has been corrected to standard internal names `Status` and `DeclarantAckStatus`).
+**[ZH]** 在「呼叫 SharePoint HTTP 要求」的「URI」欄位中使用，動態打斷該單據的預設權限繼承。
+**[EN]** Used in the "URI" field of the "Send an HTTP request to SharePoint" action to dynamically break role inheritance for the specific item.
+
+```text
+_api/lists/getByTitle('Demo_Gift_Declarations')/items(@{outputs('Create_item')?['body/ID']})/breakroleinheritance(copyRoleAssignments=false, clearSubscopes=true)
+
+```
+
+---
+
+### 5. 子流程：觸發條件防禦公式 / Sub-Flow: Trigger Condition Defense Formula
+
+**[ZH]** 在子流程「建立或修改項目時」的「設定 ➔ 觸發程序條件」中使用，徹底杜絕無窮迴圈。
+**[EN]** Used in the "Settings ➔ Trigger Conditions" of the sub-flow's trigger to completely prevent infinite loops.
 
 ```text
 @and(equals(triggerOutputs()?['body/Status/Value'], '已完成歸檔'), not(equals(triggerOutputs()?['body/DeclarantAckStatus/Value'], '申報人已確認')))
@@ -62,7 +71,7 @@ float(outputs('Get_response_details')?['body/r8xxxx...'])
 
 ---
 
-### 5. 子流程：標準時間戳記轉換 / Sub-Flow: Standard Time Timestamp (e.g., HKT)
+### 6. 子流程：標準時間戳記轉換 / Sub-Flow: Standard Time Timestamp (e.g., HKT)
 
 **[ZH]** 在子流程「更新項目」的「申報人確認日期」中使用，將 UTC 轉換為香港法定標準時間。
 **[EN]** Used in the "DeclarantAckDate" field of the sub-flow's "Update_item" action to convert UTC to Hong Kong Standard Time.
@@ -71,3 +80,5 @@ float(outputs('Get_response_details')?['body/r8xxxx...'])
 convertTimeZone(utcNow(), 'UTC', 'China Standard Time')
 
 ```
+
+
