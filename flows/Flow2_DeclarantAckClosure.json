@@ -66,6 +66,27 @@
           "Succeeded"
         ]
       }
+    },
+    "Send_Final_Audit_Receipt_Email": {
+      "type": "OpenApiConnection",
+      "description": "Send a legally defensible digital receipt to the declarant to close the loop. / 寄送具備法律防禦效力的數位收據給申報人，完成最終閉環。",
+      "inputs": {
+        "host": {
+          "connectionName": "shared_office365",
+          "operationId": "SendEmailV2",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
+        },
+        "parameters": {
+          "emailMessage/To": "@triggerOutputs()?['body/DeclarantEmail']",
+          "emailMessage/Subject": "@concat('[Case Closed | 案件完結] Declaration Acknowledged - ', triggerOutputs()?['body/Title'])",
+          "emailMessage/Body": "<p>Thank you. Your acknowledgment has been recorded with a digital timestamp.<br>感謝您的確認，系統已寫入數位時間戳記，本利益申報案卷已正式歸檔完結。</p><p><strong>Audit Timestamp (HKT):</strong> @{convertTimeZone(utcNow(), 'UTC', 'China Standard Time')}</p>"
+        }
+      },
+      "runAfter": {
+        "Update_item_Write_Ack_Record": [
+          "Succeeded"
+        ]
+      }
     }
   }
 }
