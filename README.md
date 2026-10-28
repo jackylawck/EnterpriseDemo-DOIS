@@ -62,15 +62,26 @@ flowchart TD
 
 ---
 
-## ⚙️ 技術亮點 (Technical Implementation)
+## ⚙️ 技術亮點與進階架構 (Technical Implementation & Architecture)
 
-1. **零額外授權架構 (Zero-License Cost)**：全流程採用 Standard Connectors（Forms、SharePoint、Outlook、Approvals），替企業節省昂貴的 Power Apps / Power Automate Premium 授權費用。
-2. **多附件動態解析管線**：透過 `Parse JSON` 與 `Get file content using path`，自動將 Forms 上傳至個人 OneDrive 暫存資料夾的相片與單據，批量轉入企業 SharePoint 核心清單作為永久附件。
-3. **無限迴圈防禦 (Infinite Loop Defense)**：在子流程採用「前置狀態門閘 (Condition Gate)」雙重檢驗（`流程狀態=已完成歸檔` 且 `申報人確認狀態≠申報人已確認`），當最後一步寫入確認狀態與 HKT 時間戳記時，自動阻斷二次觸發，徹底根絕無窮迴圈與額度消耗。
-4. **時區標準化 (Timezone Normalization)**：全面將雲端預設的 UTC 時間轉為香港標準時間（`China Standard Time` / UTC+8），符合香港法定文件審計標準。
+1. **零信任權限隔離 (Row-Level Security & Zero-Trust)**：
+針對高度敏感的利益與防貪申報，系統設計支援透過 REST API (`Send an HTTP request to SharePoint`) 動態打破 SharePoint 項目權限繼承 (Break Role Inheritance)。確保單據僅限「申報人、直屬主管與 HR」具備讀取權限，嚴格落實 ISO/IEC 27001 資訊安全機密性規範。
+2. **高管友善 UI/UX (Adaptive Cards for Executives)**：
+針對董事經理的 7 項法定處置決策，捨棄冗長的傳統按鈕，改為運用 JSON 調適型卡片 (Adaptive Cards)。將處置選項封裝為下拉式選單 (`Input.ChoiceSet`) 並結合動態備註欄，大幅優化 C-Level 主管在 Teams 與 Outlook 上的審批體驗。
+3. **零額外授權架構 (Zero-License Cost)**：
+全流程採用 Standard Connectors（Forms、SharePoint、Outlook、Approvals），替企業節省昂貴的 Power Platform Premium 授權費用，實現 Governance-as-Code。
+4. **多附件動態解析管線 (Dynamic Attachment Parsing)**：
+透過 `Parse JSON` 與 `Get file content using path`，自動將 Forms 上傳至個人 OneDrive 暫存資料夾的相片與單據，批量轉入企業 SharePoint 核心清單作為永久附件。
+5. **無限迴圈防禦 (Infinite Loop Defense)**：
+在子流程採用「前置狀態門閘 (Condition Gate)」雙重檢驗（`流程狀態=已完成歸檔` 且 `申報人確認狀態≠申報人已確認`），當最後一步寫入確認狀態與 HKT 時間戳記時，自動阻斷二次觸發，徹底根絕無窮迴圈與額度消耗。
+6. **時區標準化 (Timezone Normalization)**：
+全面將雲端預設的 UTC 時間轉為香港標準時間（`China Standard Time` / UTC+8），符合香港法定文件審計標準。
 
 ---
 
 ## 📄 版權與聲明 (License & Disclaimer)
 
 本專案採 MIT License 授權發佈。
+
+**Disclaimer:** This project is a generic enterprise demo created for academic and architectural research. All data, organizational names, and endpoints used are fictional or generic placeholders.
+
