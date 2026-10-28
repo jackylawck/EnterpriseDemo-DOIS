@@ -472,25 +472,33 @@
         </div>
       </section>
 
-      <!-- 技術亮點 -->
+      <!-- 技術亮點與進階架構 -->
       <section class="card">
-        <h2>⚙️ 技術亮點 (Technical Implementation)</h2>
+        <h2>⚙️ 技術亮點與進階架構 (Technical Implementation & Architecture)</h2>
         <div class="tech-list">
           <div class="tech-item">
-            <h3>1. 零額外授權架構 (Zero-License)</h3>
+            <h3>1. 零信任權限隔離 (Row-Level Security)</h3>
+            <p>透過 SharePoint REST API 動態打破權限繼承 (Break Role Inheritance)，僅授權申報人與主管讀取，嚴格落實 ISO/IEC 27001 機密性防護。</p>
+          </div>
+          <div class="tech-item">
+            <h3>2. 高管友善 UI/UX (Adaptive Cards)</h3>
+            <p>運用 JSON 調適型卡片將 7 項法定處置選項封裝為下拉式選單 (Input.ChoiceSet) 搭配動態備註，大幅優化 C-Level 主管於 Teams / Outlook 的審核體驗。</p>
+          </div>
+          <div class="tech-item">
+            <h3>3. 零額外授權架構 (Zero-License)</h3>
             <p>全流程採用 Standard Connectors（Forms、SharePoint、Outlook、Approvals），替企業節省昂貴的 Power Platform Premium 授權費用。</p>
           </div>
           <div class="tech-item">
-            <h3>2. 多附件動態解析管線</h3>
+            <h3>4. 多附件動態解析管線 (Dynamic Parsing)</h3>
             <p>透過 Parse JSON 與 Get file content using path，自動將 Forms 上傳暫存的相片與單據，批量轉入企業 SharePoint 核心清單作為永久附件。</p>
           </div>
           <div class="tech-item">
-            <h3>3. 無限迴圈防禦 (Infinite Loop Defense)</h3>
+            <h3>5. 無限迴圈防禦 (Infinite Loop Defense)</h3>
             <p>在子流程採用「前置狀態門閘 (Condition Gate)」雙重檢驗，當寫入確認狀態與 HKT 時間戳記時自動阻斷二次觸發，杜絕無限循環。</p>
           </div>
           <div class="tech-item">
-            <h3>4. 時區標準化 (Timezone Normalization)</h3>
-            <p>全面將雲端預設的 UTC 時間轉為香港標準時間（China Standard Time / UTC+8），符合香港法定文件審計標準。</p>
+            <h3>6. 時區標準化 (Timezone Normalization)</h3>
+            <p>全面將雲端預設的 UTC 時間轉為香港標準時間（China Standard Time / UTC+8），符合法定文件審計標準。</p>
           </div>
         </div>
       </section>
