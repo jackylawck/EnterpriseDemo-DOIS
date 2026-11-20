@@ -43,7 +43,7 @@
   <meta name="application-name" content="EnterpriseDemo-DOIS">
 
   <!-- 🛡️ 企業級資安防禦策略：單行化 Content Security Policy (CSP) 與權限控制 -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://img.shields.io; font-src 'self' data:; connect-src 'self'; media-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://img.shields.io; font-src 'self' data:; connect-src 'self' blob:; media-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none';">
   <meta http-equiv="Permissions-Policy" content="accelerometer=(), gyroscope=(), microphone=(), camera=(), geolocation=(), payment=()">
   <meta name="referrer" content="strict-origin-when-cross-origin">
 
@@ -1062,6 +1062,27 @@
         { val: "其他", tc: "其他（請參閱管理層備註）", en: "Others (See Management Comments)" }
       ];
 
+      // ⚠️ DO NOT EDIT: Must stay Unicode-escaped to survive HTML entity auto-decoding
+      // on copy/paste through editors or WYSIWYG tools.
+      // Violating this causes the entire <script> block to fail with SyntaxError.
+      function escapeHtml(str) {
+        return String(str ?? "")
+          .replace(/\u0026/g, "\u0026amp;")
+          .replace(/\u003c/g, "\u0026lt;")
+          .replace(/\u003e/g, "\u0026gt;")
+          .replace(/\u0022/g, "\u0026quot;")
+          .replace(/\u0027/g, "\u0026#39;");
+      }
+
+      // Deterministic HKD formatter independent of browser/OS locale for consistent audit trails
+      function fmtHKD(n) {
+        const num = Number(n);
+        if (!Number.isFinite(num) || num < 0) return "HKD 0";
+        const parts = (Number.isInteger(num) ? String(num) : num.toFixed(2)).split(".");
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        return "HKD " + parts.join(".");
+      }
+
       function getHKTTimestamp() {
         const now = new Date();
         const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
@@ -1120,15 +1141,6 @@
 
       function isEn() {
         return document.body.classList.contains("lang-en");
-      }
-
-      function escapeHtml(str) {
-        return String(str || "")
-          .replace(/&/g, "&")
-          .replace(/</g, "<")
-          .replace(/>/g, ">")
-          .replace(/"/g, """)
-          .replace(/'/g, "'");
       }
 
       function getDeptLabel(val) {
@@ -1211,14 +1223,14 @@
             "=========================================================================",
             `Case Serial No. (Title): ${state.caseId}`,
             `SharePoint List: Demo_Gift_Declarations (Item ID: ${state.itemId})`,
-            `Row-Level Security (RLS): Role Inheritance Broken (Declarant + Manager + HR Only)`,
+            "Row-Level Security (RLS): Role Inheritance Broken (Declarant + Manager + HR Only)",
             `Final Workflow Status: ${getStatusLabel(state.status)}`,
             "",
             "[Part A: Declaration Details]",
             `Declarant: ${f.declarantName} (${f.declarantEmail}) | Dept: ${getDeptLabel(f.department)}`,
             `Offeror: ${f.providerNameTitle} @ ${f.providerCompany}`,
             `Relationship: ${f.relationship} | Occasion: ${f.occasion}`,
-            `Gift / Advantage: ${f.giftDetails} | Est. Value: HKD ${Number(f.estimatedValue).toLocaleString()}`,
+            `Gift / Advantage: ${f.giftDetails} | Est. Value: ${fmtHKD(f.estimatedValue)}`,
             `Attachment Archived: ${f.attachmentName} (${f.attachmentSize} bytes)`,
             `Submitted At (HKT): ${state.submitTime}`,
             "",
@@ -1234,9 +1246,9 @@
             "[Part D: Physical Disposal & Closed-Loop Sign-Off]",
             `Disposal Action Log: ${state.disposalLog}`,
             `Archived At (HKT): ${state.hrArchiveTime}`,
-            `Declarant Ack Status: Declarant Acknowledged`,
+            "Declarant Ack Status: Declarant Acknowledged",
             `Declarant Ack Timestamp (HKT): ${state.ackTime}`,
-            `Flow2 Infinite Loop Gate: LOCKED (Prevents secondary trigger)`
+            "Flow2 Infinite Loop Gate: LOCKED (Prevents secondary trigger)"
           ].join("\n");
         }
         return [
@@ -1245,14 +1257,14 @@
           "=========================================================================",
           `案卷流水號 (Title)：${state.caseId}`,
           `SharePoint 清單：Demo_Gift_Declarations (項目編號: ${state.itemId})`,
-          `零信任權限隔離 (RLS)：已打破權限繼承（僅限申報人、主管及 HR 讀取）`,
+          "零信任權限隔離 (RLS)：已打破權限繼承（僅限申報人、主管及 HR 讀取）",
           `最終流程狀態：${getStatusLabel(state.status)}`,
           "",
           "【甲部：申報內容】",
           `申報同事：${f.declarantName} (${f.declarantEmail}) ｜ 部門：${getDeptLabel(f.department)}`,
           `提供者：${f.providerNameTitle}（${f.providerCompany}）`,
           `業務關係：${f.relationship} ｜ 獲贈場合：${f.occasion}`,
-          `饋贈/利益詳情：${f.giftDetails} ｜ 估值：HKD ${Number(f.estimatedValue).toLocaleString()}`,
+          `饋贈/利益詳情：${f.giftDetails} ｜ 估值：${fmtHKD(f.estimatedValue)}`,
           `永久歸檔附件：${f.attachmentName} (${f.attachmentSize} bytes)`,
           `申報提交時間 (HKT)：${state.submitTime}`,
           "",
@@ -1268,10 +1280,22 @@
           "【丁部：實體處置落實與雙向閉環確認】",
           `處置落實記錄：${state.disposalLog}`,
           `HR 歸檔時間 (HKT)：${state.hrArchiveTime}`,
-          `申報人確認狀態：申報人已確認`,
+          "申報人確認狀態：申報人已確認",
           `申報人確認時間戳記 (HKT)：${state.ackTime}`,
-          `Flow2 防無限迴圈門閘：已鎖定阻斷（杜絕二次觸發）`
+          "Flow2 防無限迴圈門閘：已鎖定阻斷（杜絕二次觸發）"
         ].join("\n");
+      }
+
+      function triggerBlobDownload(filename, textContent) {
+        const blob = new Blob(["\uFEFF" + textContent], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
       }
 
       function renderStep1() {
@@ -1394,6 +1418,7 @@
         const en = isEn();
         const f = state.form;
         const valNum = Number(f.estimatedValue || 0);
+        const valStr = fmtHKD(valNum);
         const isHighValue = valNum >= 2000;
 
         root.innerHTML = `
@@ -1409,8 +1434,8 @@
           </div>
 
           ${isHighValue
-            ? `<div class="alert-box alert-warn">⚠️ ${en ? `High-Value / Conflict Alert: Estimated value HKD ${valNum.toLocaleString()} requires heightened POBO Cap. 201 scrutiny.` : `高估值／利益衝突風險警示：估值達 HKD ${valNum.toLocaleString()}，建議 HR 嚴格核查業務往來及招標背景。`}</div>`
-            : `<div class="alert-box alert-info">ℹ️ ${en ? `Standard Value Declaration (HKD ${valNum.toLocaleString()}). Ready for HR initial review.` : `常規估值申報（HKD ${valNum.toLocaleString()}），已派發至 hr@demo-enterprise.local 初審。`}</div>`}
+            ? `<div class="alert-box alert-warn">⚠️ ${en ? `High-Value / Conflict Alert: Estimated value ${valStr} requires heightened POBO Cap. 201 scrutiny.` : `高估值／利益衝突風險警示：估值達 ${valStr}，建議 HR 嚴格核查業務往來及招標背景。`}</div>`
+            : `<div class="alert-box alert-info">ℹ️ ${en ? `Standard Value Declaration (${valStr}). Ready for HR initial review.` : `常規估值申報（${valStr}），已派發至 hr@demo-enterprise.local 初審。`}</div>`}
 
           <div class="fact-grid">
             <div class="fact-item"><span class="fk">${en ? "Declarant:" : "申報同事："}</span><span class="fv">${escapeHtml(f.declarantName)} (${escapeHtml(getDeptLabel(f.department))})</span></div>
@@ -1418,7 +1443,7 @@
             <div class="fact-item"><span class="fk">${en ? "Organization:" : "機構："}</span><span class="fv">${escapeHtml(f.providerCompany)}</span></div>
             <div class="fact-item"><span class="fk">${en ? "Relationship:" : "業務關係："}</span><span class="fv">${escapeHtml(f.relationship)}</span></div>
             <div class="fact-item"><span class="fk">${en ? "Gift Details:" : "饋贈詳情："}</span><span class="fv">${escapeHtml(f.giftDetails)}</span></div>
-            <div class="fact-item"><span class="fk">${en ? "Valuation:" : "估值："}</span><span class="fv">HKD ${valNum.toLocaleString()}</span></div>
+            <div class="fact-item"><span class="fk">${en ? "Valuation:" : "估值："}</span><span class="fv">${valStr}</span></div>
           </div>
 
           ${state.hrResult === "Reject"
@@ -1506,7 +1531,7 @@
             <div class="fact-grid">
               <div class="fact-item"><span class="fk">${en ? "Case Ref:" : "案卷單號："}</span><span class="fv">${escapeHtml(state.caseId)}</span></div>
               <div class="fact-item"><span class="fk">${en ? "Declarant:" : "申報同事："}</span><span class="fv">${escapeHtml(f.declarantName)} (${escapeHtml(getDeptLabel(f.department))})</span></div>
-              <div class="fact-item"><span class="fk">${en ? "Gift & Value:" : "饋贈與估值："}</span><span class="fv">${escapeHtml(f.giftDetails)} (HKD ${Number(f.estimatedValue).toLocaleString()})</span></div>
+              <div class="fact-item"><span class="fk">${en ? "Gift & Value:" : "饋贈與估值："}</span><span class="fv">${escapeHtml(f.giftDetails)} (${fmtHKD(f.estimatedValue)})</span></div>
               <div class="fact-item"><span class="fk">${en ? "HR Review:" : "HR 初審意見："}</span><span class="fv">${escapeHtml(state.hrComments || (en ? "Verified & escalated" : "資料齊全，已核實估值"))}</span></div>
             </div>
 
@@ -1555,7 +1580,6 @@
         const en = isEn();
         const gateActive = state.hrArchived && !state.ackDone;
         const gateLocked = state.hrArchived && state.ackDone;
-        const receiptUri = `data:text/plain;charset=utf-8,${encodeURIComponent(buildAuditReceiptText())}`;
         const receiptFile = `${state.caseId}_Audit_Receipt.txt`;
 
         root.innerHTML = `
@@ -1615,7 +1639,7 @@
                  <div class="audit-sec-head">${en ? "Disposal Execution Record" : "實體處置落實記錄"}</div>
                  <div>${escapeHtml(state.disposalLog)}</div>
                </div>
-               <a class="btn-secondary full" href="${receiptUri}" download="${escapeHtml(receiptFile)}">💾 ${en ? `Download Audit Receipt Copy (${escapeHtml(receiptFile)})` : `下載「${escapeHtml(receiptFile)}」審計存證純文字副本`}</a>`
+               <button type="button" class="btn-secondary full" id="btnDownloadReceipt">💾 ${en ? `Download Audit Receipt Copy (${escapeHtml(receiptFile)})` : `下載「${escapeHtml(receiptFile)}」審計存證純文字副本`}</button>`
             : ""}
 
           <div class="action-bar">
@@ -1647,6 +1671,13 @@
           });
         }
 
+        const btnDl = document.getElementById("btnDownloadReceipt");
+        if (btnDl) {
+          btnDl.addEventListener("click", () => {
+            triggerBlobDownload(receiptFile, buildAuditReceiptText());
+          });
+        }
+
         document.getElementById("btnResetSim").addEventListener("click", () => {
           state = createInitialState(isEn());
           render();
@@ -1667,7 +1698,6 @@
         const en = isEn();
         document.documentElement.lang = en ? "en" : "zh-HK";
 
-        // Sync default demo strings smoothly across language switch
         const swapMap = [
           ["陳大文", "Chan Tai Man"],
           ["張志明", "Alex Cheung"],
